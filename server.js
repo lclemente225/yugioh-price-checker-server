@@ -13,6 +13,7 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 
+const salt = bcrypt.genSaltSync(6);
 //sql setup
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
@@ -32,20 +33,15 @@ const loginPool = mysql.createPool({
 app.use(async function mysqlConnection(req, res, next) {
     try {
       req.db = await pool.getConnection();
-      req.login = await loginPool.getConnection();
 
       req.db.connection.config.namedPlaceholders = true;
-      req.login.connection.config.namedPlaceholders = true;
   
       // Traditional mode ensures not null is respected for unsupplied fields, ensures valid JavaScript dates, etc.
       await req.db.query('SET SESSION sql_mode = "TRADITIONAL"');
       await req.db.query(`SET time_zone = '-8:00'`);
 
-      await req.login.query('SET SESSION sql_mode = "TRADITIONAL"');
-      await req.login.query(`SET time_zone = '-8:00'`);
   
       await next();
-      req.login.release();
       req.db.release();
     } catch (err) {
       // If anything downstream throw an error, we must release the connection allocated for the request
@@ -55,31 +51,44 @@ app.use(async function mysqlConnection(req, res, next) {
     }
   });
   
+
+
+
+
+
 //authentication and authorization here 
 //jwt key
 
 app.post('/register', async (req, res) => {
 
   const checkEmail = await req.db.query(
-    `SELECT email FROM yugioh_price_checker_login  
+    `SELECT email FROM yugioh_price_checker_users  
     WHERE email = :email`,
     { email: req.body.email });
-    let hashedPassword = await bcrypt.hash(req.body.password, 8);
+
+    let hashedPassword = await bcrypt.hash(req.body.password, salt);
+    console.log(`REGISTERING 
+    email:${req.body.email} 
+    username:${req.body.username} 
+    password:${req.body.password}
+    hashed pass: ${hashedPassword}`)
 
   try {
-  if(checkEmail.length > 0){
+  if(checkEmail[0][0] != undefined){
     return console.log("email is already in use")
   }else{
-    const registration = await req.login.query(
-      `INSERT INTO yugioh_price_checker_login 
-      (name, email, password)
-      values(:username, :email, :password)`,
+    const registration = await req.db.query(
+      `INSERT INTO yugioh_price_checker_users
+      (email, username, password)
+      VALUES( :email, :username, :password)`,
       {
-        name: req.body.username,
         email: req.body.email,
+        username: req.body.username,
         password: hashedPassword
       }
-    )};
+    )
+      console.log("successfully registered new user")
+  };
 
     
   }catch(err){
@@ -88,27 +97,24 @@ app.post('/register', async (req, res) => {
   }
 });
 
-//login here
-//1. check username and password if it matches in sql table with info
-//2. then that means it is authenticated 
-//3. authorized to go to cart
-//4. or possibly save cart?
+app.post('/login', async (req, res) => {
+  const userPassword = await req.db.query(
+    `SELECT password FROM yugioh_price_checker_users 
+    WHERE username = :username `, 
+    {username: req.body.username}
+    );
+  const hashPW = userPassword[0][0].password; 
 
-app.get('/login', async (req, res) => {
-  const hashPW = req.login.query(
-    /*sql query here to look for pw which will be hashed
-    SELECT password FROM yugioh_cart_login 
-    WHERE name = :name 
-    */), /*{name: req.body.username} */;
-  const inputPassword = await bcrypt.hash(req.body.password, 8);
-  const matchPassword = bcrypt.compare(inputPassword, hashedPW);
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW); 
 
   if(matchPassword){
     console.log("login successful")
+  }else{
+    console.log("incorrect password")
   }
   //set jwt key here
 })
-
+ 
 
 
 
@@ -200,22 +206,6 @@ app.put('/cart/add', async (req, res) => {
 });
 
 
-//need to make a function that will update quantity
-//this is performed in the function above
-//possibly this will be needed for the cart?? 
-//but maybe not since i might be able to reuse the above function
-
-/* app.put('/cart/updateAddItem/:id', async(req, res) => {
-  //if quantity is 0 then delete
-  try{
-  const productId = req.params.id;
- await req.db.query('UPDATE yugioh_cart_list SET quantity = quantity + 1 WHERE id = :id', {id: productId}, (error, result) => {
- 
-  });
-}catch (err) { 
-  console.log('put err did not add item', err)
-}    
-}) */
 
 //COMPLETED
 //function to subtract 1 and delete when quantity is 0 
@@ -262,33 +252,35 @@ app.put('/cart/updateSubtractItem', async(req, res, next) => {
     
 })
 
-app.delete('/cart/deleteItem/:id', async (req, res) => {
+app.delete('/cart/deleteItem', async (req, res) => {
     //delete selected row
     //obtain id using name
     //get index of name and then get id from that 
-    
+    const existingCard = await req.db.query(
+      `SELECT id FROM yugioh_cart_list
+       WHERE card_name = :card_name AND cartId = :cartId`,
+      {
+        card_name: req.body.card_name,
+        cartId: req.body.cartId,
+      }
+    );
+    console.log("deleting this one",existingCard[0])
     try {
+     
         const addCartList = await req.db.query(
           `DELETE FROM yugioh_cart_list 
-          WHERE id = :id`,
+          WHERE id = :id;`,
           {
-            id: req.params.id
+            id: existingCard[0][0].id
           }
         );
         
         res.json(addCartList)
       } catch (err) { 
-        console.log('post /', err)
+        console.log('did not delete', err)
       }
 })
 
-
-
-//3. sql server will update and then when you go to the cart make a 
-//get request or fetch the info
-
-//the info will be in json
-//map over the array of objects to render on the page
 
 const port = process.env.PORT;
 app.listen(port, () => {
