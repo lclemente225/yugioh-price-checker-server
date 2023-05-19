@@ -52,13 +52,6 @@ app.use(async function mysqlConnection(req, res, next) {
   });
   
 
-
-
-
-
-//authentication and authorization here 
-//jwt key
-
 app.post('/register', async (req, res) => {
 
   const checkEmail = await req.db.query(
@@ -87,7 +80,7 @@ app.post('/register', async (req, res) => {
         password: hashedPassword
       }
     )
-      console.log("successfully registered new user")
+      console.log("successfully registered new user")   
   };
 
     
@@ -97,22 +90,47 @@ app.post('/register', async (req, res) => {
   }
 });
 
+function verifyJwt(req, res, next){
+    const token = req.headers["access-token"];
+    if(!token){
+      return res.json("we need token, please provide it next time")
+    } else {
+          jwt.verify(token, "jwtSecretKey", (err, decoded) => {
+            if(err){
+              res.json("not Authenticated")
+            }else{
+              req.userId = decoded.id;
+              next();
+            }
+          })
+         }
+}
+
+app.get('/checkAuth', verifyJwt, (req,res) => {
+    return res.json("Authenticated")
+})
+
 app.post('/login', async (req, res) => {
-  const userPassword = await req.db.query(
-    `SELECT password FROM yugioh_price_checker_users 
+  const userInfo = await req.db.query(
+    `SELECT id ,password FROM yugioh_price_checker_users 
     WHERE username = :username `, 
     {username: req.body.username}
     );
-  const hashPW = userPassword[0][0].password; 
-
+  const hashPW = userInfo[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW); 
 
-  if(matchPassword){
+  if(matchPassword){ 
+    //set jwt key here
+    const id = userInfo[0][0].id;
+    const token = jwt.sign({id}, "jwtsecretkey", {expiresIn: 300})
     console.log("login successful")
+    return res.json({Login:true, token, data})
   }else{
     console.log("incorrect password")
   }
-  //set jwt key here
+
+ 
+  
 })
  
 
