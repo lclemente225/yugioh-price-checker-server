@@ -22,13 +22,6 @@ const pool = mysql.createPool({
     database: process.env.DB_NAME
   });
 
-const loginPool = mysql.createPool({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  database: process.env.LOGIN_DB_NAME
-})
-  
 
 app.use(async function mysqlConnection(req, res, next) {
     try {
@@ -60,6 +53,7 @@ app.post('/register', async (req, res) => {
     { email: req.body.email });
 
     let hashedPassword = await bcrypt.hash(req.body.password, salt);
+
     console.log(`REGISTERING 
     email:${req.body.email} 
     username:${req.body.username} 
@@ -124,34 +118,14 @@ app.post('/login', async (req, res) => {
     const id = userInfo[0][0].id;
     const token = jwt.sign({id}, "jwtsecretkey", {expiresIn: 300})
     console.log("login successful")
-    return res.json({Login:true, token, data})
+    return res.json({Login:true, "accessToken":token})
   }else{
     console.log("incorrect password")
   }
-
  
-  
+
 })
  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 //plan
@@ -159,7 +133,10 @@ app.post('/login', async (req, res) => {
 
 app.get('/cart/list', async (req, res) => {
   //this is the data that comes from react when clicking on the + button
-  const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
+  const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list WHERE userId = :userId`,
+  {
+    userId: req.body.userId
+  });
   res.json(cartList);
 }); 
 
@@ -170,10 +147,11 @@ app.put('/cart/add', async (req, res) => {
   try {
     // Check if card already exists in cart list
     const existingCard = await req.db.query(
-      `SELECT quantity FROM yugioh_cart_list WHERE card_name = :card_name AND cartId = :cartId`,
+      `SELECT quantity FROM yugioh_cart_list WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
       {
         card_name: req.body.card_name,
         cartId: req.body.cartId,
+        userId: req.body.userId
       }
     );
 
@@ -183,11 +161,12 @@ app.put('/cart/add', async (req, res) => {
       const updatedCartList = await req.db.query(
         `UPDATE yugioh_cart_list 
         SET quantity = quantity + 1, price = :price * quantity  
-        WHERE card_name = :card_name AND cartId = :cartId`,
+        WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
         {
           card_name: req.body.card_name,
           cartId: req.body.cartId,
-          price: req.body.price
+          price: req.body.price,
+          userId: req.body.userId
         }
       );
 
@@ -200,18 +179,21 @@ app.put('/cart/add', async (req, res) => {
           card_name, 
           price,
           quantity,
-          cartId
+          cartId,
+          userId
         ) VALUES (
           :card_name,
           :price,
           :quantity,
-          :cartId
+          :cartId,
+          :userId
         )`,
         {
           card_name: req.body.card_name,
           price: req.body.price,
           quantity: req.body.quantity,
           cartId: req.body.cartId,
+          userId: req.body.userId
         }
       );
 
@@ -230,8 +212,11 @@ app.put('/cart/add', async (req, res) => {
 app.put('/cart/updateSubtractItem', async(req, res, next) => {
   //if quantity is 0 then delete
   const selectedCard = await req.db.query(
-    `SELECT id, quantity FROM yugioh_cart_list WHERE cartId = :cartId`,
-    { cartId: req.body.cartId });
+    `SELECT id, quantity FROM yugioh_cart_list WHERE cartId = :cartId AND userId = :userId`,
+    { 
+      cartId: req.body.cartId,
+      userId:req.body.userId 
+     });
   
    try{
     console.log(selectedCard[0])
@@ -243,8 +228,11 @@ app.put('/cart/updateSubtractItem', async(req, res, next) => {
     
       await req.db.query(
         `DELETE FROM yugioh_cart_list 
-        WHERE id = :id`,
-        {id: selectedCard[0][0].id},
+        WHERE id = :id AND userId = :userId`,
+        {
+          id: selectedCard[0][0].id,
+          userId: req.body.userId 
+        },
         (error, result) => {
           console.log('ERRaaOR DELETING IN PUT REQ', error);
           console.log('SUCCESSFULLY DELETED IN PUT REQ', result);
@@ -257,8 +245,11 @@ app.put('/cart/updateSubtractItem', async(req, res, next) => {
     await req.db.query(
       `UPDATE yugioh_cart_list
        SET quantity = quantity - 1 
-       WHERE id = :id`, 
-    {id: selectedCard[0][0].id}, (error, result) => {
+       WHERE id = :id AND userId = :userId`, 
+    {
+      id: selectedCard[0][0].id,
+      userId: req.body.userId 
+    }, (error, result) => {
         console.log('ERROR IN SUBTRACTING 1 QUANTITY', error);
         console.log('SUCCESS IN SUBTRACTING 1 QUANTITY', result);
              })
@@ -276,10 +267,11 @@ app.delete('/cart/deleteItem', async (req, res) => {
     //get index of name and then get id from that 
     const existingCard = await req.db.query(
       `SELECT id FROM yugioh_cart_list
-       WHERE card_name = :card_name AND cartId = :cartId`,
+       WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
       {
         card_name: req.body.card_name,
         cartId: req.body.cartId,
+        userId: req.body.userId 
       }
     );
     console.log("deleting this one",existingCard[0])
@@ -287,9 +279,10 @@ app.delete('/cart/deleteItem', async (req, res) => {
      
         const addCartList = await req.db.query(
           `DELETE FROM yugioh_cart_list 
-          WHERE id = :id;`,
+          WHERE id = :id AND userId = :userId`,
           {
-            id: existingCard[0][0].id
+            id: existingCard[0][0].id,
+            userId: req.body.userId 
           }
         );
         
