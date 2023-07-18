@@ -153,6 +153,21 @@ app.post('/login', async (req, res) => {
  
 
 })
+
+//delete info
+app.delete('/delete-profile', async(req, res) => {
+  const getId = await req.db.query(
+        `SELECT id FROM yugioh_price_checker_users 
+        WHERE email = :email`,
+        {
+          email: req.body.email
+        });
+
+  const id = getId[0][0].id;
+  console.log(`deleting`)
+   await req.db.query(
+    `DELETE FROM yugioh_price_checker_users WHERE id = ${id}`)
+})
  
 
 
@@ -170,8 +185,10 @@ app.get('/cart/list', async (req, res) => {
 //2. when you click a button, then it will send a post request to the sql server
 //this function adds quantity if the card exists
 app.put('/cart/add', async (req, res) => {
+
   const userIdFromClientSide = req.body.userId;
   console.log("USERID:", userIdFromClientSide)
+
   try {
     // Check if card already exists in cart list
     const existingCard = await req.db.query(
@@ -309,7 +326,7 @@ app.delete('/cart/deleteItem', async (req, res) => {
     console.log("deleting this one",existingCard[0])
     try {
      
-        const addCartList = await req.db.query(
+        const deleteCartListItem = await req.db.query(
           `DELETE FROM yugioh_cart_list 
           WHERE id = :id AND userId = :userId`,
           {
@@ -318,7 +335,7 @@ app.delete('/cart/deleteItem', async (req, res) => {
           }
         );
         
-        res.json(addCartList)
+        res.json(deleteCartListItem)
       } catch (err) { 
         console.log('did not delete', err)
       }
