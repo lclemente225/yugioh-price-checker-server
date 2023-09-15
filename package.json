@@ -2,7 +2,7 @@
   "name": "Yugioh Price Checker",
   "version": "1.0.0",
   "scripts": {
-    "start": "server.js" 
+    "start": "node server.js" 
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
