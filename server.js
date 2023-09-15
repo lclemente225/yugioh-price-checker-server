@@ -12,7 +12,9 @@ require('dotenv').config();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173'
+}));
 
 const salt = bcrypt.genSaltSync(6);
 //sql setup
