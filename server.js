@@ -17,10 +17,10 @@ app.use(cors());
 const salt = bcrypt.genSaltSync(6);
 //sql setup
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    host: process.env.DATABASE_HOST_URL,
+    user: process.env.DATABASE_USER,
+    password: process.env.DATABASE_PW,
+    database: process.env.DATABASE_USER
   });
 
 
@@ -72,7 +72,7 @@ app.post('/register', async (req, res) => {
   try {
   if(checkEmail[0][0] != undefined){
     return console.error("email is already in use")
-  }else{
+  }else if(checkEmail[0][0] != ""){
   
 
     const registration = await req.db.query(
@@ -87,6 +87,8 @@ app.post('/register', async (req, res) => {
       }
     )
       console.log("successfully registered new user")   
+  }else{
+    return console.error("please enter an email")
   };
     
   }catch(err){
@@ -148,14 +150,147 @@ app.post('/login', async (req, res) => {
     console.log("login successful")
     return res.json({Login:true, "accessToken":token, "email":email, "userId":userId})
   }else{
-    console.log("incorrect password")
+    res.json("incorrect username or password")
   }
  
 
 })
 
+//update username endpoint
+app.put('/profile-update-user', async(req,res) => {
+  let insertedNewUsername = req.body.newUserName;
+
+  let passwordCheck = await req.db.query(
+    `SELECT password, username FROM yugioh_price_checker_users 
+    WHERE email = :email `, 
+    {email: req.body.email}
+    );
+  const hashPW = passwordCheck[0][0].password; 
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+  console.log(passwordCheck[0])
+ 
+  if(passwordCheck[0][0].username === insertedNewUsername){
+      return res.json("That username is already in use")
+  }
+
+  if(matchPassword){
+    const selectedProfile = await req.db.query(
+          `UPDATE yugioh_price_checker_users 
+          SET email = :newEmail 
+          WHERE email = :email`,
+          {
+            email: req.body.email,
+            newEmail: insertedNewEmail
+          }
+        );
+
+      console.log('email changed to ', req.body.newEmail)
+         return res.json(selectedProfile)
+    }else{
+      return res.status(500).json({ 
+                              error: 'Failed to change the email' 
+                                  });
+    }
+})
+
+//update email endpoint
+app.put('/profile-update-email', async(req,res) => {
+  let insertedNewEmail = req.body.newEmail;
+
+  let infoCheck = await req.db.query(
+    `SELECT email FROM yugioh_price_checker_users`);
+  
+  let isEmailInUse = false;
+
+  infoCheck[0].map((emails) => {
+    if(emails.email === insertedNewEmail){
+      isEmailInUse = true;
+    }
+  })
+
+  if(isEmailInUse){
+    return res.json("Email already in use try another one")
+  }else{
+
+  let passwordCheck = await req.db.query(
+    `SELECT password, email FROM yugioh_price_checker_users 
+    WHERE email = :email`, 
+    {email: req.body.email}
+    );
+  const hashPW = passwordCheck[0][0].password; 
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+
+  if(matchPassword){
+    const selectedProfile = await req.db.query(
+          `UPDATE yugioh_price_checker_users 
+          SET email = :newEmail 
+          WHERE email = :email`,
+          {
+            email: req.body.email,
+            newEmail: insertedNewEmail
+          }
+        );
+
+      console.log('email changed to ', req.body.newEmail)
+      //returning this variable will complete updating email
+         return res.json(selectedProfile)
+    }else{
+      return res.status(500).json({ 
+                              error: 'Failed to change the email' 
+                                  });
+    }
+  }
+})
+
+//update password
+//req.body.password
+//if it is not the same as database then put retype password
+//incomplete
+/*
+1. check given pw with database pw
+2. replace pw and hash it
+3. that's it  
+*/
+app.put('/profile-update-user', async(req,res) => {
+
+  let passwordCheck = await req.db.query(
+    `SELECT password, username FROM yugioh_price_checker_users 
+    WHERE email = :email `, 
+    {email: req.body.email}
+    );
+  const hashPW = passwordCheck[0][0].password; 
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+  console.log(passwordCheck[0])
+ 
+
+  if(passwordCheck[0][0].username === insertedNewUsername){
+      return res.json("That username is already in use")
+  }
+
+
+  if(matchPassword){
+    const selectedProfile = await req.db.query(
+          `UPDATE yugioh_price_checker_users 
+          SET email = :newEmail 
+          WHERE email = :email`,
+          {
+            email: req.body.email,
+            newEmail: insertedNewEmail
+          }
+        );
+
+      console.log('email changed to ', req.body.newEmail)
+         return res.json(selectedProfile)
+    }else{
+      return res.status(500).json({ 
+                              error: 'Failed to change the email' 
+                                  });
+    }
+})
+
 //delete info
-app.delete('/delete-profile', async(req, res) => {
+//incomplete
+app.delete('/profile-delete', async(req, res) => {
   const getId = await req.db.query(
         `SELECT id FROM yugioh_price_checker_users 
         WHERE email = :email`,
@@ -164,6 +299,14 @@ app.delete('/delete-profile', async(req, res) => {
         });
 
   const id = getId[0][0].id;
+  const hashPW = passwordCheck[0][0].password; 
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+  console.log(passwordCheck[0])
+ 
+  if(passwordCheck[0][0].username === insertedNewUsername){
+      return res.json("That username is already in use")
+  }
+
   console.log(`deleting`)
    await req.db.query(
     `DELETE FROM yugioh_price_checker_users WHERE id = ${id}`)
@@ -177,7 +320,7 @@ app.delete('/delete-profile', async(req, res) => {
 app.get('/cart/list', async (req, res) => {
   //this is the data that comes from react when clicking on the + button
   const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
-  res.json(cartList);
+  return res.json(cartList);
 }); 
 
 
@@ -185,7 +328,7 @@ app.get('/cart/list', async (req, res) => {
 //2. when you click a button, then it will send a post request to the sql server
 //this function adds quantity if the card exists
 app.put('/cart/add', async (req, res) => {
-
+  
   const userIdFromClientSide = req.body.userId;
   console.log("USERID:", userIdFromClientSide)
 
@@ -217,7 +360,7 @@ app.put('/cart/add', async (req, res) => {
         }
       );
 
-      res.json(updatedCartList);
+      return res.json(updatedCartList);
     } else {
       console.log("added card to list", req.body.card_name)
       // If card doesn't exist, add it to cart list
@@ -244,7 +387,7 @@ app.put('/cart/add', async (req, res) => {
         }
       );
 
-      res.json(addCartList);
+      return res.json(addCartList);
     }
   } catch (err) {
     console.log('post err card not added', err);
