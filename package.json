@@ -1,5 +1,5 @@
 {
-  "name": "your-app-name",
+  "name": "Yugioh Price Checker",
   "version": "1.0.0",
   "scripts": {
     "start": "server.js" 
