@@ -1,5 +1,5 @@
 {
-  "name": "Yugioh Price Checker",
+  "name": "Yugioh_Price_Checker",
   "version": "1.0.0",
   "scripts": {
     "start": "node server.js" 
