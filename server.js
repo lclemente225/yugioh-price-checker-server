@@ -12,9 +12,19 @@ require('dotenv').config();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors({
-  origin: 'https://main--ygo-pricechecker.netlify.app/'
-}));
+const allowedOrigins = ['https://main--ygo-pricechecker.netlify.app'];
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (allowedOrigins.includes(origin) || !origin) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+};
+
+// Use the CORS middleware with the specified options
+app.use(cors(corsOptions));
 
 const salt = bcrypt.genSaltSync(6);
 //sql setup
