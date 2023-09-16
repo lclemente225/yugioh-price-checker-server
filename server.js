@@ -12,7 +12,11 @@ require('dotenv').config();
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
-const allowedOrigins = ['https://main--ygo-pricechecker.netlify.app', 'http://localhost:5173/', 'https://ygo-pricechecker.netlify.app/'];
+const allowedOrigins = [
+                      'https://main--ygo-pricechecker.netlify.app', 
+                      'http://localhost:5173', 
+                      'https://ygo-pricechecker.netlify.app'
+                    ];
 const corsOptions = {
   origin: function (origin, callback) {
     if (allowedOrigins.includes(origin) || !origin) {
