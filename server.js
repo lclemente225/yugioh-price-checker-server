@@ -452,7 +452,7 @@ app.put('/cart/updateSubtractItem', async(req, res) => {
             userId: userIdFromClientSide 
           });
     };
-  
+    res.status(200).json({ message: 'Item updated successfully.' });
 }catch (error) { 
   console.error('put err did not subtract item', error)
 } 
