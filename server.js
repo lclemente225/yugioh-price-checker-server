@@ -415,7 +415,7 @@ app.put('/cart/add', async (req, res) => {
 
 //COMPLETED
 //function to subtract 1 and delete when quantity is 0 
-app.put('/cart/updateSubtractItem', async(req, res, next) => {
+app.put('/cart/updateSubtractItem', async(req, res) => {
   //if quantity is 0 then delete
   const userIdFromClientSide = req.body.userId;
   const selectedCard = await req.db.query(
@@ -426,7 +426,6 @@ app.put('/cart/updateSubtractItem', async(req, res, next) => {
      });
   
    try{
-    console.log(selectedCard[0])
     if(selectedCard[0].length === 0){
       console.log("none here")
       return next();
@@ -439,31 +438,23 @@ app.put('/cart/updateSubtractItem', async(req, res, next) => {
         {
           id: selectedCard[0][0].id,
           userId: userIdFromClientSide 
-        },
-        (error, result) => {
-          console.log('ERRaaOR DELETING IN PUT REQ', error);
-          console.log('SUCCESSFULLY DELETED IN PUT REQ', result);
-        }
-      );
-    }
+        });
+    };
 
     if(selectedCard[0] != undefined){
-    console.log("subtracting 1 quantity",selectedCard[0][0].quantity)  
-    await req.db.query(
-      `UPDATE yugioh_cart_list
-       SET quantity = quantity - 1 
-       WHERE id = :id AND userId = :userId`, 
-    {
-      id: selectedCard[0][0].id,
-      userId: userIdFromClientSide 
-    }, (error, result) => {
-        console.log('ERROR IN SUBTRACTING 1 QUANTITY', error);
-        console.log('SUCCESS IN SUBTRACTING 1 QUANTITY', result);
-             })
+        console.log("subtracting 1 quantity",selectedCard[0][0].quantity)  
+        await req.db.query(
+          `UPDATE yugioh_cart_list
+          SET quantity = quantity - 1 
+          WHERE id = :id AND userId = :userId`, 
+          {
+            id: selectedCard[0][0].id,
+            userId: userIdFromClientSide 
+          });
     };
   
-}catch (err) { 
-  console.log('put err did not subtract item', err)
+}catch (error) { 
+  console.error('put err did not subtract item', error)
 } 
     
 })
