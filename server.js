@@ -32,7 +32,7 @@ const corsOptions = {
 // Use the CORS middleware with the specified options
 app.use(cors(corsOptions));
 
-app.use(helmet());
+/* app.use(helmet());
 
 // Configure Cross-Origin Opener Policy (COOP)
 app.use((req, res, next) => {
@@ -44,7 +44,20 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
   next();
-});
+}); */
+
+const setPermissionsPolicy = (req, res, next) => {
+  // Set the Permissions-Policy header to specify the features and origins you want
+  res.setHeader(
+    'Permissions-Policy',
+    'geolocation=(self), payment=(example.com)' // Adjust this to your requirements
+  );
+  next();
+};
+
+// Use the middleware to set the Permissions-Policy header
+app.use(setPermissionsPolicy);
+
 
 
 const salt = bcrypt.genSaltSync(6);
