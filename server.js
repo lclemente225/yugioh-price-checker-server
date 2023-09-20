@@ -348,8 +348,15 @@ app.delete('/profile-delete', async(req, res) => {
 
 app.get('/cart/list', async (req, res) => {
   //this is the data that comes from react when clicking on the + button
-  const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
-  return res.json(cartList);
+  try{
+    const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
+  
+    return res.json(cartList);
+
+  }catch(error){
+    
+    res.status(500).json({ error: 'Failed to find yoru cart' });
+  }
 }); 
 
 
