@@ -276,6 +276,9 @@ app.put('/profile-update-email', async(req,res) => {
 3. that's it  
 */
 app.put('/profile-update-pw', async(req,res) => {
+  /*
+  email, pw, newpw
+  */
 
   let passwordCheck = await req.db.query(
     `SELECT password, email FROM yugioh_price_checker_users 
@@ -471,18 +474,24 @@ app.put('/cart/updateSubtractItem', async(req, res) => {
 
 app.delete('/cart/deleteItem', async (req, res) => {
   const userIdFromClientSide = req.body.userId;
+  const cardName = req.body.card_name;
     //delete selected row
     //obtain id using name
     //get index of name and then get id from that 
     const existingCard = await req.db.query(
       `SELECT id FROM yugioh_cart_list
-       WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
+       WHERE card_name = :cardName AND cartId = :cartId AND userId = :userId`,
       {
-        card_name: req.body.card_name,
+        cardName: cardName,
         cartId: req.body.cartId,
         userId: userIdFromClientSide 
       }
     );
+
+    if (existingCard[0].length === 0) {
+      return res.status(404).json({ message: 'Item not found' });
+    }
+
     console.log("deleting this one",existingCard[0])
     try {
      
@@ -492,13 +501,14 @@ app.delete('/cart/deleteItem', async (req, res) => {
           {
             id: existingCard[0][0].id,
             userId: userIdFromClientSide 
-          }
+          } 
         );
         
-        res.json(deleteCartListItem)
-      } catch (err) { 
+        res.json({ message: 'Item deleted successfully', deletedItem: cardName })
+      } catch (err) {  
         console.log('did not delete', err)
-      }
+        res.status(500).json({ message: 'Internal Server Error' }); 
+      } 
 })
 
 
