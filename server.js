@@ -151,25 +151,23 @@ app.get('/checkAuth', verifyJwt, (req,res) => {
 app.post('/login', async (req, res) => {
   console.log("logging in")
   const userInfo = await req.db.query(
-    `SELECT id, email, userId, password FROM yugioh_price_checker_users 
+    `SELECT id, email, userId, password, username FROM yugioh_price_checker_users 
     WHERE username = :username `, 
     {username: req.body.username}
     );
   const hashPW = userInfo[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW); 
-  console.log("MATCHING PASSWORDS??", matchPassword)
-
-  if(matchPassword === true && userInfo[0][0].userId === req.body.username){ 
-    console.log("bro I LOGGED IN",res.statusCode)
+  
+  if(matchPassword){ 
+    console.log("Login Successful",res.statusCode) 
     //set jwt key here
     const email = userInfo[0][0].email;
     const id = userInfo[0][0].id;
     const userId = userInfo[0][0].userId;
     const token = jwt.sign({id}, "jwtsecretkey", {expiresIn: 300})
-    console.log("login successful")
+    
     return res.json({Login:true, "accessToken":token, "email":email, "userId":userId})
   }else{
-
     return res.status(401).json({message:"Wrong user or PASSWORD"})
   }
  
