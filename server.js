@@ -11,33 +11,6 @@ const helmet = require('helmet');//for permissions policy config
 
 require('dotenv').config();
 
-app.use(
-  helmet.permissionsPolicy({
-    features: {
-      'attribution-reporting': [
-                      'https://main--ygo-pricechecker.netlify.app', 
-                      'http://localhost:5173', 
-                      'https://ygo-pricechecker.netlify.app'
-                    ],
-      'run-ad-auction': [
-                      'https://main--ygo-pricechecker.netlify.app', 
-                      'http://localhost:5173', 
-                      'https://ygo-pricechecker.netlify.app'
-                    ],
-      'join-ad-interest-group': [
-                      'https://main--ygo-pricechecker.netlify.app', 
-                      'http://localhost:5173', 
-                      'https://ygo-pricechecker.netlify.app'
-                    ],
-      'fetch': [
-                    'https://main--ygo-pricechecker.netlify.app', 
-                    'http://localhost:5173', 
-                    'https://ygo-pricechecker.netlify.app'
-                  ],
-      // Other features and policies as needed
-    },
-  })
-);
 
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -58,6 +31,21 @@ const corsOptions = {
 
 // Use the CORS middleware with the specified options
 app.use(cors(corsOptions));
+
+app.use(helmet());
+
+// Configure Cross-Origin Opener Policy (COOP)
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
+  next();
+});
+
+// Configure Cross-Origin Embedder Policy (COEP)
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
+  next();
+});
+
 
 const salt = bcrypt.genSaltSync(6);
 //sql setup
