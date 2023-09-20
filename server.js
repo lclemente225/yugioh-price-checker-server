@@ -7,9 +7,11 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const app = express();
 const { v4: uuidv4 } = require('uuid');//generate random id
+const helmet = require('helmet');//for permissions policy config
 
 require('dotenv').config();
 
+app.use(helmet());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 const allowedOrigins = [
