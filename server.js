@@ -14,9 +14,18 @@ require('dotenv').config();
 app.use(
   helmet.permissionsPolicy({
     features: {
-      'attribution-reporting': ['self'],
-      'run-ad-auction': ['self'],
-      'join-ad-interest-group': ['self'],
+      'attribution-reporting': [
+        'https://main--ygo-pricechecker.netlify.app', 
+        'http://localhost:5173', 
+        'https://ygo-pricechecker.netlify.app'],
+      'run-ad-auction': [
+        'https://main--ygo-pricechecker.netlify.app', 
+        'http://localhost:5173', 
+        'https://ygo-pricechecker.netlify.app'],
+      'join-ad-interest-group': [
+        'https://main--ygo-pricechecker.netlify.app', 
+        'http://localhost:5173', 
+        'https://ygo-pricechecker.netlify.app'],
       // Other features and policies as needed
     },
   })
