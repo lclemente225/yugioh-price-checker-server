@@ -144,7 +144,7 @@ app.get('/checkUserId', async (req, res) => {
   }
   catch (error) {
         console.error('Error while querying userId:', error);
-        return res.status(500).json({ error: 'Internal Server Error' });
+        return res.status(500).json({ error: 'Internal Server Error no check user id' });
   } 
 })
  
