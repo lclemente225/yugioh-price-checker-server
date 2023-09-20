@@ -11,7 +11,17 @@ const helmet = require('helmet');//for permissions policy config
 
 require('dotenv').config();
 
-app.use(helmet());
+app.use(
+  helmet.permissionsPolicy({
+    features: {
+      'attribution-reporting': ['self'],
+      'run-ad-auction': ['self'],
+      'join-ad-interest-group': ['self'],
+      // Other features and policies as needed
+    },
+  })
+);
+
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 const allowedOrigins = [
