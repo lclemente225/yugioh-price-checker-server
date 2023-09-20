@@ -63,12 +63,11 @@ app.use(async function mysqlConnection(req, res, next) {
 
 
 app.post('/register', async (req, res) => {
-  
 
-  const checkEmail = await req.db.query(
-    `SELECT email FROM yugioh_price_checker_users  
-    WHERE email = :email`,
-    { email: req.body.email });
+    const checkEmail = await req.db.query(
+      `SELECT email FROM yugioh_price_checker_users  
+      WHERE email = :email`,
+      { email: req.body.email });
 
     let userIdInfo = await req.db.query(
       `SELECT userId FROM yugioh_price_checker_users`
@@ -85,31 +84,32 @@ app.post('/register', async (req, res) => {
     hashed pass: ${hashedPassword}
     userID:${uuidv4()}`)
 
-  try {
-  if(checkEmail[0][0] != undefined){
-    return console.error("email is already in use")
-  }else if(checkEmail[0][0] != ""){
-  
-
-    const registration = await req.db.query(
-      `INSERT INTO yugioh_price_checker_users
-      (email, username, password, userId)
-      VALUES( :email, :username, :password, :userId)`,
-      {
-        email: req.body.email,
-        username: req.body.username,
-        password: hashedPassword,
-        userId: uuidv4()
-      }
-    )
-      console.log("successfully registered new user")   
-  }else{
-    return console.error("please enter an email")
-  };
+    try {
+    if(checkEmail[0][0] != undefined){
+      return console.error("email is already in use")
+    }else if(checkEmail[0][0] != "" && req.body.password && req.body.username){
     
-  }catch(err){
-    res.status(500).json({ error: 'Failed to register' });
-  }
+
+      const registration = await req.db.query(
+        `INSERT INTO yugioh_price_checker_users
+        (email, username, password, userId)
+        VALUES( :email, :username, :password, :userId)`,
+        {
+          email: req.body.email,
+          username: req.body.username,
+          password: hashedPassword,
+          userId: uuidv4()
+        }
+      )
+        console.log("successfully registered new user")   
+    }else{
+      res.status(500).json({ error: 'Failed to register' });
+      return console.error("please enter an email")
+    };
+      
+    }catch(err){
+      res.status(500).json({ error: 'Failed to register' });
+    }
 });
 
 
@@ -131,11 +131,11 @@ app.get('/checkUserId', async (req, res) => {
 function verifyJwt(req, res, next){
     const token = req.headers["access-token"];
     if(!token){
-      return res.json("we need token, please provide it next time")
+      return res.json({message: "we need token, please provide it next time"})
     } else {
           jwt.verify(token, "jwtSecretKey", (err, decoded) => {
             if(err){
-              res.json("not Authenticated")
+              res.json({message: "not Authenticated"})
             }else{
               req.userId = decoded.id;
               next();
@@ -145,18 +145,22 @@ function verifyJwt(req, res, next){
 }
 
 app.get('/checkAuth', verifyJwt, (req,res) => {
-    return res.json("Authenticated")
+    return res.json({message: "Authenticated"})
 })
 
-app.post('/login', async (req, res) => {
+app.post('/login', async (req, res) => { 
+  
   console.log("logging in")
   const userInfo = await req.db.query(
     `SELECT id, email, userId, password, username FROM yugioh_price_checker_users 
     WHERE username = :username `, 
     {username: req.body.username}
     );
+    if(res.statusCode === null){
+      return res.json({message:"you got the wrong user or pass buddy"})
+    }
   const hashPW = userInfo[0][0].password; 
-  const matchPassword = await bcrypt.compare(req.body.password, hashPW); 
+  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
   
   if(matchPassword){ 
     console.log("Login Successful",res.statusCode) 
