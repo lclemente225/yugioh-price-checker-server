@@ -149,6 +149,7 @@ app.get('/checkAuth', verifyJwt, (req,res) => {
 })
 
 app.post('/login', async (req, res) => {
+  console.log("logging in")
   const userInfo = await req.db.query(
     `SELECT id, email, userId, password FROM yugioh_price_checker_users 
     WHERE username = :username `, 
@@ -156,8 +157,10 @@ app.post('/login', async (req, res) => {
     );
   const hashPW = userInfo[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW); 
+  console.log("MATCHING PASSWORDS??", matchPassword)
 
-  if(matchPassword){ 
+  if(matchPassword === true && userInfo[0][0].userId === req.body.username){ 
+    console.log("bro I LOGGED IN",res.statusCode)
     //set jwt key here
     const email = userInfo[0][0].email;
     const id = userInfo[0][0].id;
@@ -166,7 +169,8 @@ app.post('/login', async (req, res) => {
     console.log("login successful")
     return res.json({Login:true, "accessToken":token, "email":email, "userId":userId})
   }else{
-    res.json("incorrect username or password")
+
+    return res.status(401).json({message:"Wrong user or PASSWORD"})
   }
  
 
@@ -244,7 +248,7 @@ app.put('/profile-update-email', async(req,res) => {
           {
             email: req.body.email,
             newEmail: insertedNewEmail
-          }
+          } 
         );
 
       console.log('email changed to ', req.body.newEmail)
@@ -260,46 +264,50 @@ app.put('/profile-update-email', async(req,res) => {
 
 //update password
 //req.body.password
+//req.body.newPassword
 //if it is not the same as database then put retype password
 //incomplete
+//NEED email, pw and new pw
 /*
 1. check given pw with database pw
 2. replace pw and hash it
 3. that's it  
 */
-app.put('/profile-update-user', async(req,res) => {
+app.put('/profile-update-pw', async(req,res) => {
 
   let passwordCheck = await req.db.query(
-    `SELECT password, username FROM yugioh_price_checker_users 
+    `SELECT password, email FROM yugioh_price_checker_users 
     WHERE email = :email `, 
     {email: req.body.email}
     );
+  const newPW = req.body.newPassword;
   const hashPW = passwordCheck[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW);
   console.log(passwordCheck[0])
  
 
-  if(passwordCheck[0][0].username === insertedNewUsername){
-      return res.json("That username is already in use")
+  if(matchPassword && req.body.password === newPW){
+      return res.json("That is your current password")
   }
 
-
-  if(matchPassword){
+//if matchpw is true and email is true
+//hash new pw and replace it in db
+  if(matchPassword && passwordCheck[0][0].email === req.body.email){
+    let hashedNewPassword = await bcrypt.hash(req.body.newPassword, salt);
     const selectedProfile = await req.db.query(
           `UPDATE yugioh_price_checker_users 
-          SET email = :newEmail 
+          SET password = ${hashedNewPassword} 
           WHERE email = :email`,
           {
-            email: req.body.email,
-            newEmail: insertedNewEmail
+            email: req.body.email
           }
-        );
+        ); 
 
-      console.log('email changed to ', req.body.newEmail)
+      console.log('PASSWORD CHANGED SUCCESS')
          return res.json(selectedProfile)
     }else{
       return res.status(500).json({ 
-                              error: 'Failed to change the email' 
+                              error: 'Failed to change the passworod' 
                                   });
     }
 })
