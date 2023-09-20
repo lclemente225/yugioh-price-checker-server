@@ -129,6 +129,7 @@ app.get('/checkUserId', async (req, res) => {
  
 
 function verifyJwt(req, res, next){
+
     const token = req.headers["access-token"];
     if(!token){
       return res.json({message: "we need token, please provide it next time"})
@@ -275,10 +276,11 @@ app.put('/profile-update-email', async(req,res) => {
 2. replace pw and hash it
 3. that's it  
 */
-app.put('/profile-update-pw', async(req,res) => {
-  /*
-  email, pw, newpw
-  */
+
+/*app.put('/profile-update-pw', async(req,res) => {
+  
+  //email, pw, newpw
+  
 
   let passwordCheck = await req.db.query(
     `SELECT password, email FROM yugioh_price_checker_users 
@@ -315,7 +317,7 @@ app.put('/profile-update-pw', async(req,res) => {
                               error: 'Failed to change the passworod' 
                                   });
     }
-})
+})*/
 
 //delete info
 //incomplete
