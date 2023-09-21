@@ -34,9 +34,6 @@ app.use(cors(corsOptions));
 
 app.use(helmet());
 
-// Use the middleware to set the Permissions-Policy header
-app.use(setPermissionsPolicy);
-
 const setPermissionsPolicy = (req, res, next) => {
   // Set the Permissions-Policy header to specify the features and origins you want
   res.setHeader(
