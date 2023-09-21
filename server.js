@@ -37,13 +37,13 @@ app.use(helmet());
 const setPermissionsPolicy = (req, res, next) => {
   // Set the Permissions-Policy header to specify the features and origins you want
   res.setHeader(
-    'Permissions-Policy'+
-    'attribution-reporting = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)'+
-    'Cross-Origin-Embedder-Policy', 'require-corp'+
-    'Cross-Origin-Opener-Policy', 'same-origin'+
-    'run-ad-auction = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)'+
-    'join-ad-interest-group = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)'+
-    'browsing-topics = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)'
+    'Permissions-Policy',
+    'attribution-reporting = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app);'+
+    'Cross-Origin-Embedder-Policy', 'require-corp;'+
+    'Cross-Origin-Opener-Policy', 'same-origin;'+
+    'run-ad-auction = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app);'+
+    'join-ad-interest-group = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app);'+
+    'browsing-topics = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app);'
 
     );
   next();
