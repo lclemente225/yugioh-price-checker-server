@@ -32,26 +32,23 @@ const corsOptions = {
 // Use the CORS middleware with the specified options
 app.use(cors(corsOptions));
 
-/* app.use(helmet());
+app.use(helmet());
 
-// Configure Cross-Origin Opener Policy (COOP)
-app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-  next();
-});
-
-// Configure Cross-Origin Embedder Policy (COEP)
-app.use((req, res, next) => {
-  res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
-  next();
-}); */
+// Use the middleware to set the Permissions-Policy header
+app.use(setPermissionsPolicy);
 
 const setPermissionsPolicy = (req, res, next) => {
   // Set the Permissions-Policy header to specify the features and origins you want
   res.setHeader(
     'Permissions-Policy',
-    'geolocation=(self), payment=(example.com)' // Adjust this to your requirements
-  );
+    'attribution-reporting = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)',
+    'Cross-Origin-Embedder-Policy', 'require-corp',
+    'Cross-Origin-Opener-Policy', 'same-origin',
+    'run-ad-auction = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)',
+    'join-ad-interest-group = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)',
+    'browsing-topics = (https://main--ygo-pricechecker.netlify.app http://localhost:5173  https://ygo-pricechecker.netlify.app)'
+
+    );
   next();
 };
 
