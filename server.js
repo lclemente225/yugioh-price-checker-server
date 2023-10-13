@@ -31,7 +31,7 @@ const corsOptions = {
 
 // Use the CORS middleware with the specified options
 app.use(cors(corsOptions));
-
+  
 app.use(helmet());
 
 const setPermissionsPolicy = (req, res, next) => {
@@ -44,7 +44,7 @@ const setPermissionsPolicy = (req, res, next) => {
     'run-ad-auction=(https://main--ygo-pricechecker.netlify.app http://localhost:5173 https://ygo-pricechecker.netlify.app);' +
     'join-ad-interest-group=(https://main--ygo-pricechecker.netlify.app http://localhost:5173 https://ygo-pricechecker.netlify.app);' +
     'browsing-topics=(https://main--ygo-pricechecker.netlify.app http://localhost:5173 https://ygo-pricechecker.netlify.app);' +
-    'idle-detection=true;'
+    'idle-detection=(https://main--ygo-pricechecker.netlify.app http://localhost:5173 https://ygo-pricechecker.netlify.app);'
   );
   next();
 };
@@ -67,22 +67,22 @@ const pool = mysql.createPool({
 
 app.use(async function mysqlConnection(req, res, next) {
     try {
-      req.db = await pool.getConnection();
+        req.db = await pool.getConnection();
 
-      req.db.connection.config.namedPlaceholders = true;
-  
-      // Traditional mode ensures not null is respected for unsupplied fields, ensures valid JavaScript dates, etc.
-      await req.db.query('SET SESSION sql_mode = "TRADITIONAL"');
-      await req.db.query(`SET time_zone = '-8:00'`);
+        req.db.connection.config.namedPlaceholders = true;
+    
+        // Traditional mode ensures not null is respected for unsupplied fields, ensures valid JavaScript dates, etc.
+        await req.db.query('SET SESSION sql_mode = "TRADITIONAL"');
+        await req.db.query(`SET time_zone = '-8:00'`);
 
-  
-      await next();
-      req.db.release();
+    
+        await next();
+        req.db.release();
     } catch (err) {
-      // If anything downstream throw an error, we must release the connection allocated for the request
-      console.log(err)
-      if (req.db) req.db.release();
-      throw err;
+        // If anything downstream throw an error, we must release the connection allocated for the request
+        console.log(err)
+        if (req.db) req.db.release();
+        throw err;
     }
   });
 
@@ -90,9 +90,10 @@ app.use(async function mysqlConnection(req, res, next) {
 app.post('/register', async (req, res) => {
 
     const checkEmail = await req.db.query(
-      `SELECT email FROM yugioh_price_checker_users  
-      WHERE email = :email`,
-      { email: req.body.email });
+        `SELECT email FROM yugioh_price_checker_users  
+        WHERE email = :email`,
+        { email: req.body.email }
+      );
 
     let userIdInfo = await req.db.query(
       `SELECT userId FROM yugioh_price_checker_users`
@@ -114,19 +115,19 @@ app.post('/register', async (req, res) => {
       return console.error("email is already in use")
     }else if(checkEmail[0][0] != "" && req.body.password && req.body.username){
     
-
       const registration = await req.db.query(
         `INSERT INTO yugioh_price_checker_users
         (email, username, password, userId)
         VALUES( :email, :username, :password, :userId)`,
         {
-          email: req.body.email,
-          username: req.body.username,
-          password: hashedPassword,
-          userId: uuidv4()
+            email: req.body.email,
+            username: req.body.username,
+            password: hashedPassword,
+            userId: uuidv4()
         }
       )
         console.log("successfully registered new user")   
+
     }else{
       res.status(500).json({ error: 'Failed to register' });
       return console.error("please enter an email")
@@ -144,7 +145,6 @@ app.get('/checkUserId', async (req, res) => {
         SELECT userId, email FROM yugioh_price_checker_users`)
         
           return res.json(getUserId)
-        
   }
   catch (error) {
         console.error('Error while querying userId:', error);
@@ -159,14 +159,16 @@ function verifyJwt(req, res, next){
     if(!token){
       return res.json({message: "we need token, please provide it next time"})
     } else {
-          jwt.verify(token, "jwtSecretKey", (err, decoded) => {
-            if(err){
-              res.json({message: "not Authenticated"})
-            }else{
-              req.userId = decoded.id;
-              next();
-            }
-          })
+            jwt.verify(token, "jwtSecretKey", (err, decoded) => {
+
+              if(err){
+                  res.json({message: "not Authenticated"})
+              }else{
+                  req.userId = decoded.id;
+                  next();
+              }
+
+            })
          }
 }
 
@@ -182,6 +184,7 @@ app.post('/login', async (req, res) => {
     WHERE username = :username `, 
     {username: req.body.username}
     );
+
     if(res.statusCode === null){
       return res.json({message:"you got the wrong user or pass buddy"})
     }
@@ -196,7 +199,7 @@ app.post('/login', async (req, res) => {
     const userId = userInfo[0][0].userId;
     const token = jwt.sign({id}, "jwtsecretkey", {expiresIn: 300})
     
-    return res.json({Login:true, "accessToken":token, "email":email, "userId":userId})
+    return res.status(200).json({"Login":true, "accessToken":token, "email":email, "userId":userId})
   }else{
     return res.status(401).json({message:"Wrong user or PASSWORD"})
   }
@@ -205,13 +208,13 @@ app.post('/login', async (req, res) => {
 })
 
 //update username endpoint
-app.put('/profile-update-user', async(req,res) => {
+app.put('/profile/update-user', async(req,res) => {
   let insertedNewUsername = req.body.newUserName;
 
   let passwordCheck = await req.db.query(
-    `SELECT password, username FROM yugioh_price_checker_users 
-    WHERE email = :email `, 
-    {email: req.body.email}
+        `SELECT password, username FROM yugioh_price_checker_users 
+        WHERE email = :email `, 
+        {email: req.body.email}
     );
   const hashPW = passwordCheck[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW);
@@ -223,13 +226,13 @@ app.put('/profile-update-user', async(req,res) => {
 
   if(matchPassword){
     const selectedProfile = await req.db.query(
-          `UPDATE yugioh_price_checker_users 
-          SET email = :newEmail 
-          WHERE email = :email`,
-          {
-            email: req.body.email,
-            newEmail: insertedNewEmail
-          }
+              `UPDATE yugioh_price_checker_users 
+              SET email = :newEmail 
+              WHERE email = :email`,
+              {
+                email: req.body.email,
+                newEmail: insertedNewEmail
+              }
         );
 
       console.log('email changed to ', req.body.newEmail)
@@ -239,10 +242,10 @@ app.put('/profile-update-user', async(req,res) => {
                               error: 'Failed to change the email' 
                                   });
     }
-})
+}) 
 
 //update email endpoint
-app.put('/profile-update-email', async(req,res) => {
+app.put('/profile/update-email', async(req,res) => {
   let insertedNewEmail = req.body.newEmail;
 
   let infoCheck = await req.db.query(
@@ -265,6 +268,7 @@ app.put('/profile-update-email', async(req,res) => {
     WHERE email = :email`, 
     {email: req.body.email}
     );
+
   const hashPW = passwordCheck[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW);
 
@@ -301,71 +305,81 @@ app.put('/profile-update-email', async(req,res) => {
 2. replace pw and hash it
 3. that's it  
 */
-
-/*app.put('/profile-update-pw', async(req,res) => {
-  
+//works 10/13/23
+app.put('/profile/update-pw', async(req,res) => {
   //email, pw, newpw
-  
-
-  let passwordCheck = await req.db.query(
-    `SELECT password, email FROM yugioh_price_checker_users 
-    WHERE email = :email `, 
-    {email: req.body.email}
+   let passwordCheck = await req.db.query(
+        `SELECT password, email FROM yugioh_price_checker_users 
+        WHERE email = :email `, 
+        {email: req.body.email}
     );
   const newPW = req.body.newPassword;
   const hashPW = passwordCheck[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW);
-  console.log(passwordCheck[0])
+  console.log(passwordCheck[0]) 
  
 
   if(matchPassword && req.body.password === newPW){
-      return res.json("That is your current password")
+      return res.status(500).json({message:"That is your current password"})
   }
 
 //if matchpw is true and email is true
 //hash new pw and replace it in db
-  if(matchPassword && passwordCheck[0][0].email === req.body.email){
-    let hashedNewPassword = await bcrypt.hash(req.body.newPassword, salt);
-    const selectedProfile = await req.db.query(
-          `UPDATE yugioh_price_checker_users 
-          SET password = ${hashedNewPassword} 
-          WHERE email = :email`,
-          {
-            email: req.body.email
-          }
-        ); 
+  if(matchPassword){
+        let hashedNewPassword = await bcrypt.hash(req.body.newPassword, salt);
+        const selectedProfile = await req.db.query(
+              `UPDATE yugioh_price_checker_users 
+              SET password = :newPassword
+              WHERE email = :email`,
+              {
+                newPassword: hashedNewPassword,
+                email: req.body.email
+              }
+            ); 
 
-      console.log('PASSWORD CHANGED SUCCESS')
-         return res.json(selectedProfile)
+          console.log('PASSWORD CHANGED SUCCESS')
+          return res.status(200).json({message: "changed password successful"})
+
     }else{
       return res.status(500).json({ 
-                              error: 'Failed to change the passworod' 
+                                    error: 'Failed to change the password' 
                                   });
-    }
-})*/
+    } 
+})
 
 //delete info
 //incomplete
-app.delete('/profile-delete', async(req, res) => {
-  const getId = await req.db.query(
-        `SELECT id FROM yugioh_price_checker_users 
-        WHERE email = :email`,
-        {
-          email: req.body.email
-        });
+// select id where email and pw 
 
-  const id = getId[0][0].id;
-  const hashPW = passwordCheck[0][0].password; 
-  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
-  console.log(passwordCheck[0])
- 
-  if(passwordCheck[0][0].username === insertedNewUsername){
-      return res.json("That username is already in use")
-  }
+app.delete('/profile/delete', async(req, res) => {
+      const getId = await req.db.query(
+                `SELECT id FROM yugioh_price_checker_users 
+                WHERE email = :email`,
+                {
+                    email: req.body.email
+                }
+            );
 
-  console.log(`deleting`)
-   await req.db.query(
-    `DELETE FROM yugioh_price_checker_users WHERE id = ${id}`)
+      const id = getId[0][0].id;
+      const hashPW = passwordCheck[0][0].password; 
+      const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+      console.log(passwordCheck[0]);
+
+      if(!id){
+        return res.status(500).json({message: "Wrong Email"})
+      }
+    
+      if(matchPassword){
+        
+          console.log(`deleting`)
+          await req.db.query(
+            `DELETE FROM yugioh_price_checker_users WHERE id = ${id}`
+            );
+
+      } else {
+        return res.status(500).json({message: "Wrong password"})
+      }
+
 })
  
 
@@ -374,16 +388,16 @@ app.delete('/profile-delete', async(req, res) => {
 //1. obtain info from react and yugioh api that is being used
 
 app.get('/cart/list', async (req, res) => {
-  //this is the data that comes from react when clicking on the + button
-  try{
-    const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
-  
-    return res.json(cartList);
-
-  }catch(error){
+    //this is the data that comes from react when clicking on the + button
+    try{
+      const cartList = await req.db.query(`SELECT * FROM yugioh_cart_list`);
     
-    res.status(500).json({ error: 'Failed to find yoru cart' });
-  }
+      return res.json(cartList);
+
+    }catch(error){
+      
+      res.status(500).json({ error: 'Failed to find yoru cart' });
+    }
 }); 
 
 
@@ -392,70 +406,73 @@ app.get('/cart/list', async (req, res) => {
 //this function adds quantity if the card exists
 app.put('/cart/add', async (req, res) => {
   
-  const userIdFromClientSide = req.body.userId;
-  console.log("USERID:", userIdFromClientSide)
+      const userIdFromClientSide = req.body.userId;
+      console.log("USERID:", userIdFromClientSide)
 
-  try {
-    // Check if card already exists in cart list
-    const existingCard = await req.db.query(
-      `SELECT quantity FROM yugioh_cart_list 
-      WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
-      {
-        card_name: req.body.card_name,
-        cartId: req.body.cartId,
-        userId: userIdFromClientSide
+      try {
+        // Check if card already exists in cart list
+        const existingCard = await req.db.query(
+            `SELECT quantity FROM yugioh_cart_list 
+            WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
+            {
+                card_name: req.body.card_name,
+                cartId: req.body.cartId,
+                userId: userIdFromClientSide
+            }
+        );
+        
+        console.log("TRYING TO ADD CARD TO CART", req.body.card_name, req.body.userId);
+
+        if (existingCard[0][0] != undefined) {
+
+              // If card already exists, update its quantity
+              console.log("updated quantity", req.body.card_name, req.body.cartId);
+              const updatedCartList = await req.db.query(
+                  `UPDATE yugioh_cart_list 
+                  SET quantity = quantity + 1, price = :price * quantity  
+                  WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
+                  {
+                      card_name: req.body.card_name,
+                      cartId: req.body.cartId,
+                      price: req.body.price,
+                      userId: userIdFromClientSide
+                  }
+              );
+
+          return res.json(updatedCartList);
+
+        } else {
+          console.log("added card to list", req.body.card_name)
+          // If card doesn't exist, add it to cart list
+          const addCartList = await req.db.query(
+              `INSERT INTO yugioh_cart_list (
+                card_name, 
+                price,
+                quantity,
+                cartId,
+                userId
+              ) VALUES (
+                :card_name,
+                :price,
+                :quantity,
+                :cartId,
+                :userId
+              )`,
+              {
+                  card_name: req.body.card_name,
+                  price: req.body.price,
+                  quantity: req.body.quantity,
+                  cartId: req.body.cartId,
+                  userId: userIdFromClientSide
+              }
+          );
+
+          return res.json(addCartList);
+        }
+      } catch (err) {
+            console.log('post err card not added', err);
+            res.status(500).json({ error: 'Failed to add card to cart' });
       }
-    );
-    console.log("TRYING TO ADD CARD TO CART", req.body.card_name, req.body.userId);
-
-    if (existingCard[0][0] != undefined) {
-      // If card already exists, update its quantity
-      console.log("updated quantity", req.body.card_name, req.body.cartId);
-      const updatedCartList = await req.db.query(
-        `UPDATE yugioh_cart_list 
-        SET quantity = quantity + 1, price = :price * quantity  
-        WHERE card_name = :card_name AND cartId = :cartId AND userId = :userId`,
-        {
-          card_name: req.body.card_name,
-          cartId: req.body.cartId,
-          price: req.body.price,
-          userId: userIdFromClientSide
-        }
-      );
-
-      return res.json(updatedCartList);
-    } else {
-      console.log("added card to list", req.body.card_name)
-      // If card doesn't exist, add it to cart list
-      const addCartList = await req.db.query(
-        `INSERT INTO yugioh_cart_list (
-          card_name, 
-          price,
-          quantity,
-          cartId,
-          userId
-        ) VALUES (
-          :card_name,
-          :price,
-          :quantity,
-          :cartId,
-          :userId
-        )`,
-        {
-          card_name: req.body.card_name,
-          price: req.body.price,
-          quantity: req.body.quantity,
-          cartId: req.body.cartId,
-          userId: userIdFromClientSide
-        }
-      );
-
-      return res.json(addCartList);
-    }
-  } catch (err) {
-    console.log('post err card not added', err);
-    res.status(500).json({ error: 'Failed to add card to cart' });
-  }
 });
 
 
@@ -463,86 +480,90 @@ app.put('/cart/add', async (req, res) => {
 //COMPLETED
 //function to subtract 1 and delete when quantity is 0 
 app.put('/cart/updateSubtractItem', async(req, res) => {
-  //if quantity is 0 then delete
-  const userIdFromClientSide = req.body.userId;
-  const selectedCard = await req.db.query(
-    `SELECT id, quantity FROM yugioh_cart_list WHERE cartId = :cartId AND userId = :userId`,
-    { 
-      cartId: req.body.cartId,
-      userId: userIdFromClientSide 
-     });
-  
-   try{
-    if(selectedCard[0].length === 0){
-      console.log("none here")
-      return next();
-    }
-    if (selectedCard[0][0].quantity === 1) {
+    //if quantity is 0 then delete
+    const userIdFromClientSide = req.body.userId;
+    const selectedCard = await req.db.query(
+      `SELECT id, quantity FROM yugioh_cart_list WHERE cartId = :cartId AND userId = :userId`,
+      { 
+        cartId: req.body.cartId,
+        userId: userIdFromClientSide 
+      });
     
-      await req.db.query(
-        `DELETE FROM yugioh_cart_list 
-        WHERE id = :id AND userId = :userId`,
-        {
-          id: selectedCard[0][0].id,
-          userId: userIdFromClientSide 
-        });
-    };
-
-    if(selectedCard[0] != undefined){
-        console.log("subtracting 1 quantity",selectedCard[0][0].quantity)  
+    try{
+      if(selectedCard[0].length === 0){
+        console.log("none here")
+        return next();
+      }
+      if (selectedCard[0][0].quantity === 1) {
+      
         await req.db.query(
-          `UPDATE yugioh_cart_list
-          SET quantity = quantity - 1 
-          WHERE id = :id AND userId = :userId`, 
-          {
-            id: selectedCard[0][0].id,
-            userId: userIdFromClientSide 
-          });
-    };
+              `DELETE FROM yugioh_cart_list 
+              WHERE id = :id AND userId = :userId`,
+              {
+                  id: selectedCard[0][0].id,
+                  userId: userIdFromClientSide 
+              }
+          );
+      };
+
+      if(selectedCard[0] != undefined){
+          console.log("subtracting 1 quantity",selectedCard[0][0].quantity)  
+          await req.db.query(
+                `UPDATE yugioh_cart_list
+                SET quantity = quantity - 1 
+                WHERE id = :id AND userId = :userId`, 
+                {
+                    id: selectedCard[0][0].id,
+                    userId: userIdFromClientSide 
+                }
+          );
+
+      };
     res.status(200).json({ message: 'Item updated successfully.' });
 }catch (error) { 
-  console.error('put err did not subtract item', error)
-} 
+    console.error('put err did not subtract item', error)
+}   
     
 })
 
 app.delete('/cart/deleteItem', async (req, res) => {
-  const userIdFromClientSide = req.body.userId;
-  const cardName = req.body.card_name;
-    //delete selected row
-    //obtain id using name
-    //get index of name and then get id from that 
-    const existingCard = await req.db.query(
-      `SELECT id FROM yugioh_cart_list
-       WHERE card_name = :cardName AND cartId = :cartId AND userId = :userId`,
-      {
-        cardName: cardName,
-        cartId: req.body.cartId,
-        userId: userIdFromClientSide 
-      }
-    );
-
-    if (existingCard[0].length === 0) {
-      return res.status(404).json({ message: 'Item not found' });
-    }
-
-    console.log("deleting this one",existingCard[0])
-    try {
-     
-        const deleteCartListItem = await req.db.query(
-          `DELETE FROM yugioh_cart_list 
-          WHERE id = :id AND userId = :userId`,
-          {
-            id: existingCard[0][0].id,
-            userId: userIdFromClientSide 
-          } 
+      const userIdFromClientSide = req.body.userId;
+      const cardName = req.body.card_name;
+        //delete selected row
+        //obtain id using name
+        //get index of name and then get id from that 
+        const existingCard = await req.db.query( 
+              `SELECT id FROM yugioh_cart_list
+              WHERE card_name = :cardName AND cartId = :cartId AND userId = :userId`,
+              {
+                  cardName: cardName,
+                  cartId: req.body.cartId,
+                  userId: userIdFromClientSide 
+              }
         );
+
+        if (existingCard[0].length === 0) {
+          return res.status(404).json({ message: 'Item not found' });
+        }
+        console.log("deleting this one",existingCard[0])
+
+        try {
         
-        res.json({ message: 'Item deleted successfully', deletedItem: cardName })
-      } catch (err) {  
-        console.log('did not delete', err)
-        res.status(500).json({ message: 'Internal Server Error' }); 
-      } 
+            const deleteCartListItem = await req.db.query(
+              `DELETE FROM yugioh_cart_list 
+              WHERE id = :id AND userId = :userId`,
+              {
+                id: existingCard[0][0].id,
+                userId: userIdFromClientSide 
+              } 
+            );
+            
+            res.json({ message: 'Item deleted successfully', deletedItem: cardName })
+
+          } catch (err) {  
+              console.log('did not delete', err)
+              res.status(500).json({ message: 'Internal Server Error' }); 
+          } 
 })
 
 
