@@ -208,103 +208,92 @@ app.post('/login', async (req, res) => {
 })
 
 //update username endpoint
+//work on this 10/12/23
 app.put('/profile/update-user', async(req,res) => {
-  let insertedNewUsername = req.body.newUserName;
-
-  let passwordCheck = await req.db.query(
-        `SELECT password, username FROM yugioh_price_checker_users 
+  const insertedNewUsername = req.body.newUserName;
+  const passwordCheck = await req.db.query(
+        `SELECT id, password, username FROM yugioh_price_checker_users 
         WHERE email = :email `, 
-        {email: req.body.email}
+        {email: req.body.email} 
     );
+  const selectedId = passwordCheck[0][0].id;
   const hashPW = passwordCheck[0][0].password; 
   const matchPassword = await bcrypt.compare(req.body.password, hashPW);
-  console.log(passwordCheck[0])
+ 
  
   if(passwordCheck[0][0].username === insertedNewUsername){
-      return res.json("That username is already in use")
+      return res.status(500).json({message:"That username is already in use"})
   }
 
-  if(matchPassword){
-    const selectedProfile = await req.db.query(
-              `UPDATE yugioh_price_checker_users 
-              SET email = :newEmail 
-              WHERE email = :email`,
-              {
-                email: req.body.email,
-                newEmail: insertedNewEmail
-              }
-        );
+  if(!insertedNewUsername){
+    return res.status(500).json({message:"new username is missing"})
+  }
 
-      console.log('email changed to ', req.body.newEmail)
-         return res.json(selectedProfile)
+  if(matchPassword && insertedNewUsername){
+    //this sql query updates username
+    await req.db.query(
+              `UPDATE yugioh_price_checker_users 
+              SET username = :newUserName 
+              WHERE id = :selectedId`,
+              {
+                selectedId: selectedId,
+                newUserName: insertedNewUsername
+              }
+        ); 
+
+      console.log('user changed to ', insertedNewUsername)
+         return res.json({message:"username changed"})
     }else{
       return res.status(500).json({ 
-                              error: 'Failed to change the email' 
+                              error: 'Failed to change the username' 
                                   });
     }
 }) 
 
 //update email endpoint
+//fix this
 app.put('/profile/update-email', async(req,res) => {
-  let insertedNewEmail = req.body.newEmail;
-
-  let infoCheck = await req.db.query(
-    `SELECT email FROM yugioh_price_checker_users`);
-  
-  let isEmailInUse = false;
-
-  infoCheck[0].map((emails) => {
-    if(emails.email === insertedNewEmail){
-      isEmailInUse = true;
-    }
-  })
-
-  if(isEmailInUse){
-    return res.json("Email already in use try another one")
-  }else{
-
-  let passwordCheck = await req.db.query(
-    `SELECT password, email FROM yugioh_price_checker_users 
-    WHERE email = :email`, 
-    {email: req.body.email}
-    );
-
-  const hashPW = passwordCheck[0][0].password; 
-  const matchPassword = await bcrypt.compare(req.body.password, hashPW);
-
-  if(matchPassword){
-    const selectedProfile = await req.db.query(
-          `UPDATE yugioh_price_checker_users 
-          SET email = :newEmail 
-          WHERE email = :email`,
-          {
-            email: req.body.email,
-            newEmail: insertedNewEmail
-          } 
+    const insertedNewEmail = req.body.newEmail;
+    const infoCheck = await req.db.query(
+      `SELECT email FROM yugioh_price_checker_users`
         );
 
-      console.log('email changed to ', req.body.newEmail)
-      //returning this variable will complete updating email
-         return res.json(selectedProfile)
+    infoCheck[0].forEach((emails) => {
+        console.log("this is emails:",emails)
+        if(emails.email === insertedNewEmail){
+          return res.status(500).json({error: "This email is already in use."})
+        }
+    })
+    
+    const passwordCheck = await req.db.query(
+      `SELECT password, email FROM yugioh_price_checker_users 
+      WHERE email = :email AND username = :username`, 
+      {
+        email: req.body.email,
+        username: req.body.username
+      });
+    const hashPW = passwordCheck[0][0].password; 
+    const matchPassword = await bcrypt.compare(req.body.password, hashPW);
+
+    if(matchPassword){
+          await req.db.query(
+                `UPDATE yugioh_price_checker_users 
+                SET email = :newEmail 
+                WHERE email = :email`,
+                {
+                  email: req.body.email,
+                  newEmail: insertedNewEmail
+                } 
+              );
+            //console.log('email changed to ', req.body.newEmail)
+          return res.status(500).json({message: "email is successfully changed"})
     }else{
-      return res.status(500).json({ 
-                              error: 'Failed to change the email' 
-                                  });
+        return res.status(500).json({error: 'Failed to change the email'});
     }
-  }
+  
 })
 
-//update password
-//req.body.password
-//req.body.newPassword
-//if it is not the same as database then put retype password
-//incomplete
-//NEED email, pw and new pw
-/*
-1. check given pw with database pw
-2. replace pw and hash it
-3. that's it  
-*/
+
 //works 10/13/23
 app.put('/profile/update-pw', async(req,res) => {
   //email, pw, newpw
@@ -347,10 +336,7 @@ app.put('/profile/update-pw', async(req,res) => {
     } 
 })
 
-//delete info
-//incomplete
-// select id where email and pw 
-
+//i think this works 10/13/23
 app.delete('/profile/delete', async(req, res) => {
       const getId = await req.db.query(
                 `SELECT id FROM yugioh_price_checker_users 
@@ -359,7 +345,11 @@ app.delete('/profile/delete', async(req, res) => {
                     email: req.body.email
                 }
             );
-
+      let passwordCheck = await req.db.query(
+        `SELECT password, email FROM yugioh_price_checker_users 
+        WHERE email = :email`, 
+        {email: req.body.email}
+      );
       const id = getId[0][0].id;
       const hashPW = passwordCheck[0][0].password; 
       const matchPassword = await bcrypt.compare(req.body.password, hashPW);
